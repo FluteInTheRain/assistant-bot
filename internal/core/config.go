@@ -20,6 +20,9 @@ type Config struct {
 	DiscordGuildID string
 	// DiscordChannelID is the #server channel that receives alerts.
 	DiscordChannelID string
+	// JobwatchChannelID is the #jobs channel for the jobwatch digest
+	// (jobwatch design 5.6).
+	JobwatchChannelID string
 	// OwnerUserID is the only Discord user the bot answers.
 	OwnerUserID string
 	// HealthcheckURL is the healthchecks.io ping URL. Secret: never logged.
@@ -29,19 +32,21 @@ type Config struct {
 // LoadConfig reads the required keys from the environment.
 func LoadConfig() (Config, error) {
 	cfg := Config{
-		DiscordToken:     os.Getenv("DISCORD_TOKEN"),
-		DiscordGuildID:   os.Getenv("DISCORD_GUILD_ID"),
-		DiscordChannelID: os.Getenv("DISCORD_CHANNEL_ID"),
-		OwnerUserID:      os.Getenv("OWNER_USER_ID"),
-		HealthcheckURL:   os.Getenv("HEALTHCHECK_URL"),
+		DiscordToken:      os.Getenv("DISCORD_TOKEN"),
+		DiscordGuildID:    os.Getenv("DISCORD_GUILD_ID"),
+		DiscordChannelID:  os.Getenv("DISCORD_CHANNEL_ID"),
+		JobwatchChannelID: os.Getenv("JOBWATCH_CHANNEL_ID"),
+		OwnerUserID:       os.Getenv("OWNER_USER_ID"),
+		HealthcheckURL:    os.Getenv("HEALTHCHECK_URL"),
 	}
 	var missing []string
 	for k, v := range map[string]string{
-		"DISCORD_TOKEN":     cfg.DiscordToken,
-		"DISCORD_GUILD_ID":  cfg.DiscordGuildID,
-		"DISCORD_CHANNEL_ID": cfg.DiscordChannelID,
-		"OWNER_USER_ID":     cfg.OwnerUserID,
-		"HEALTHCHECK_URL":   cfg.HealthcheckURL,
+		"DISCORD_TOKEN":       cfg.DiscordToken,
+		"DISCORD_GUILD_ID":    cfg.DiscordGuildID,
+		"DISCORD_CHANNEL_ID":  cfg.DiscordChannelID,
+		"JOBWATCH_CHANNEL_ID": cfg.JobwatchChannelID,
+		"OWNER_USER_ID":       cfg.OwnerUserID,
+		"HEALTHCHECK_URL":     cfg.HealthcheckURL,
 	} {
 		if v == "" {
 			missing = append(missing, k)

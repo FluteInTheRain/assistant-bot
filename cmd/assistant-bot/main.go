@@ -1,6 +1,9 @@
-// assistant-bot: Khang's personal Discord assistant. v1 runs one module,
-// ociwatch, on the OCI VM `side-projects` (design doc:
-// docs/superpowers/specs/2026-11-23-oci-watch-design.md).
+// assistant-bot: Khang's personal Discord assistant. Two modules run in
+// one process on the OCI VM `side-projects`: ociwatch (every 5 min, OCI
+// instances / host / hunter, /status) and jobwatch (every 2 h, VN IT job
+// market via goodjobs.io.vn, digest at 08:00 ICT). Design docs:
+// docs/superpowers/specs/2026-11-23-oci-watch-design.md,
+// docs/superpowers/specs/2026-11-23-jobwatch-design.md.
 package main
 
 import (
@@ -12,6 +15,7 @@ import (
 	"syscall"
 
 	"github.com/FluteInTheRain/assistant-bot/internal/core"
+	"github.com/FluteInTheRain/assistant-bot/internal/modules/jobwatch"
 	"github.com/FluteInTheRain/assistant-bot/internal/modules/ociwatch"
 )
 
@@ -34,6 +38,10 @@ func main() {
 
 	notifier, stopNotifier := core.NewNotifier(session, cfg.DiscordChannelID, cfg.OwnerUserID, log)
 	defer stopNotifier()
+	// One channel per module (jobwatch design 5.1, 5.6): the digest and
+	// jobwatch's own health land in #jobs, not in #server.
+	jobsNotifier, stopJobsNotifier := core.NewNotifier(session, cfg.JobwatchChannelID, cfg.OwnerUserID, log)
+	defer stopJobsNotifier()
 	pinger := core.NewPinger(cfg.HealthcheckURL, log)
 
 	ociModule := ociwatch.New(ociwatch.Deps{
@@ -41,7 +49,18 @@ func main() {
 		Notifier: notifier,
 		Pinger:   pinger,
 	})
-	modules := []core.Module{ociModule}
+	jobModule := jobwatch.New(jobwatch.Deps{
+		Log:      log,
+		Notifier: jobsNotifier,
+	})
+	modules := []core.Module{ociModule, jobModule}
+
+	// A panicking module reports into its own channel (jobwatch design
+	// 5.5); unknown future modules fall back to the alert channel.
+	moduleNotifiers := map[string]core.Notifier{
+		"ociwatch": notifier,
+		"jobwatch": jobsNotifier,
+	}
 
 	// Slash commands, guild-scoped so they are available instantly (5.4);
 	// the dispatcher answers only the owner and logs denied attempts.
@@ -55,11 +74,16 @@ func main() {
 	defer stop()
 
 	// Each module runs in its own goroutine behind a recover: one module
-	// panicking must not kill the bot, and the panic is reported to Discord
-	// (design 5.5). A dead ociwatch also stops the healthcheck pings, so the
-	// dead-man's switch flags the silence within ~15 min.
+	// panicking must not kill the bot, and the panic is reported to that
+	// module's channel (design 5.5). A dead ociwatch also stops the
+	// healthcheck pings, so the dead-man's switch flags the silence within
+	// ~15 min.
 	for _, m := range modules {
-		go runModule(ctx, m, notifier, log)
+		panicNotifier := moduleNotifiers[m.Name()]
+		if panicNotifier == nil {
+			panicNotifier = notifier
+		}
+		go runModule(ctx, m, panicNotifier, log)
 	}
 
 	<-ctx.Done()

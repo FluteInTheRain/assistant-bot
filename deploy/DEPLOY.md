@@ -1,4 +1,4 @@
-# Deploying assistant-bot v1
+# Deploying assistant-bot v1.1
 
 > VI: Các bước triển khai bot lên VM `side-projects`.
 
@@ -20,6 +20,8 @@ everything else (binary, unit file, scripts, commands).
 4. In Discord, enable **Developer Mode** (Settings → Advanced), then copy:
    - the server ID (right-click server → Copy Server ID)
    - the `#server` channel ID (right-click channel → Copy Channel ID)
+   - the `#jobs` channel ID (create this channel first — the jobwatch
+     digest lands there at 08:00 ICT)
    - your own user ID (right-click your name → Copy User ID)
 
 ## 2. healthchecks.io (once)
@@ -56,6 +58,7 @@ cat > ~/.config/assistant-bot/env <<'EOF'
 DISCORD_TOKEN=...
 DISCORD_GUILD_ID=...
 DISCORD_CHANNEL_ID=...
+JOBWATCH_CHANNEL_ID=...
 OWNER_USER_ID=...
 HEALTHCHECK_URL=https://hc-ping.com/...
 EOF
@@ -74,6 +77,10 @@ chmod 600 ~/.config/assistant-bot/env
 - healthchecks.io: the check shows pings every 5 min.
 - Try `/status` from another account → ephemeral "Not allowed." and a
   `slash command denied` line in journald.
+- jobwatch (new in v1.1): the first poll logs a silent baseline (no
+  Discord message by design); `#jobs` then gets exactly one digest at the
+  next 08:00 ICT — even a "0 new matched" one. Matched postings
+  accumulate in `~/.local/state/assistant-bot/jobs.jsonl`.
 
 ## 7. Post-deploy review (from the design's checklist)
 
@@ -100,7 +107,10 @@ makes the next start post a fresh "bot started" baseline summary.
 - The Mac-side watcher (`local.oci-micro-watch`) keeps running until the bot
   has proven itself (design non-goal: keep both for now).
 - Restarting the bot is silent: no repeated alerts, no second summary — the
-  state file carries the last snapshot and check states.
+  state file carries the last snapshot and check states. jobwatch is the
+  same: its state is `~/.local/state/assistant-bot/jobwatch-state.json`
+  and a restart replays nothing; the next digest only reports postings
+  first seen after the restart.
 - When the hunter succeeds: expect 🎉 for each Micro, then one 🎯
   "hunter finished". `grab-servers` has then exited on purpose; the bot
   reminds you to restart it by hand if a Micro ever disappears.
