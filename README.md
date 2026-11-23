@@ -1,5 +1,7 @@
 # assistant-bot
 
+[![CI](https://github.com/FluteInTheRain/assistant-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/FluteInTheRain/assistant-bot/actions/workflows/ci.yml)
+
 A self-hosted personal assistant that lives on Discord: one small Go process
 running 24/7 on an Oracle Cloud ARM VM, structured as isolated modules that
 each do one job — and never spam.
