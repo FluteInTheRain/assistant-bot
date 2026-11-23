@@ -1,0 +1,27 @@
+# assistant-bot — Khang's personal Discord assistant (OCI watch).
+# Install to /etc/systemd/system/assistant-bot.service (deploy/install-on-vm.sh
+# does this). Runs as ubuntu (design 5.7): the bot must read
+# /home/ubuntu/grab/grab.log and query systemctl, neither needs sudo.
+
+[Unit]
+Description=assistant-bot (Discord assistant, OCI watch)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+EnvironmentFile=/home/ubuntu/.config/assistant-bot/env
+ExecStart=/usr/local/bin/assistant-bot
+Restart=on-failure
+RestartSec=30
+# Light hardening: the bot needs to read /home/ubuntu (hunter log), talk to
+# dbus for systemctl, and write only its state dir.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ubuntu/.local/state/assistant-bot
+
+[Install]
+WantedBy=multi-user.target

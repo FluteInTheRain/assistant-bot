@@ -1,0 +1,7 @@
+# build output
+dist/
+
+# local state / secrets never belong in git
+*.env
+state.json
+state.json.tmp
